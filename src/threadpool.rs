@@ -9,8 +9,19 @@ pub struct ThreadPool {
     sender: mpsc::Sender<Job>,
 }
 
+//adding a new trait FnBox to work around the current limitations of Box<FnOnce()>
+trait FnBox {
+    fn call_box(self: Box<Self>);
+}
+
+impl<F: FnOnce()> FnBox for F {
+    fn call_box(self: Box<F>) {
+     (*self)()
+    }
+}
+
 //struct Job;
-type Job = Box<FnOnce() + Send + 'static>; //type alias
+type Job = Box<FnBox + Send + 'static>; //type alias
 
 impl ThreadPool {
     pub fn new(size: usize) -> ThreadPool {
@@ -40,9 +51,10 @@ impl ThreadPool {
            F: FnOnce() + Send + 'static
        {
            let job = Box::new(f);
-           self.sender.send(job).unwrap(); // send job down the sending end of the channel 
+           self.sender.send(job).unwrap(); // send job down the sending end of the channel
        }
 }
+
 
 struct Worker {
        id: usize,
@@ -52,9 +64,21 @@ struct Worker {
 impl Worker {
 
     fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
-     let thread = thread::spawn(|| {
-         receiver;
-     });
+     // let thread = thread::spawn(|| {
+     //     receiver;
+     // });
+
+     //infinite loop
+     let thread = thread::spawn(move || {
+            loop {
+                let job = receiver.lock().unwrap().recv().unwrap();
+
+                println!("Worker {} got a job; executing.", id);
+
+                //(*job)(); does not compile. need a wrapper
+                job.call_box();
+            }
+        });
 
        Worker {
         id,
