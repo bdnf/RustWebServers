@@ -7,26 +7,24 @@ mod threadpool;
 use threadpool::ThreadPool;
 
 fn handle_connection(mut stream: TcpStream) {
- let mut req_buffer = [0; 512];
- stream.read(&mut req_buffer).unwrap();
+     let mut req_buffer = [0; 512];
+     stream.read(&mut req_buffer).unwrap();
 
- let get = b"GET / HTTP/1.1\r\n";
- let (status_line, filename) = if req_buffer.starts_with(get) {
-     ("HTTP/1.1 200 OK\r\n\r\n", "hello.html")
- } else {
-     ("HTTP/1.1 404 NOT FOUND\r\n\r\n", "404.html")
- };
+     let get = b"GET / HTTP/1.1\r\n";
+     let (status_line, filename) = if req_buffer.starts_with(get) {
+         ("HTTP/1.1 200 OK\r\n\r\n", "hello.html")
+     } else {
+         ("HTTP/1.1 404 NOT FOUND\r\n\r\n", "404.html")
+     };
 
- let mut file = File::open("./serve.html").unwrap();
- let mut contents = String::new();
- file.read_to_string(&mut contents).unwrap();
- 
- let response = format!("HTTP/1.1 200 OK\r\n\r\n{}", contents);
+     let mut file = File::open("serve.html").unwrap();
+     let mut contents = String::new();
+     file.read_to_string(&mut contents).unwrap();
 
- stream.write(response.as_bytes()).unwrap();
- stream.flush().unwrap();
+     let response = format!("HTTP/1.1 200 OK\r\n\r\n{}", contents);
 
-
+     stream.write(response.as_bytes()).unwrap();
+     stream.flush().unwrap();
 }
 
 fn main() {
@@ -37,10 +35,11 @@ fn main() {
      let stream = stream.unwrap();
 
      //handle_connection(stream);
-
-     //multithreaded
+     //and multithreaded
      pool.execute(|| {
             handle_connection(stream);
      });
     }
+
+    println!("Shutting down server!");
 }
